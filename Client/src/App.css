@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes scrollUp {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes scrollDown {
+  0% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-scroll-up {
+  animation: scrollUp 150s linear infinite;
+}
+
+.animate-scroll-down {
+  animation: scrollDown 150s linear infinite;
+}
+
+/* Pause animation on hover */
+.animate-scroll-up:hover,
+.animate-scroll-down:hover {
+  animation-play-state: paused;
+}
+
+/* Responsive animation speeds */
+@media (max-width: 1024px) {
+  .animate-scroll-up,
+  .animate-scroll-down {
+    animation-duration: 35s;
+  }
+}
+
+@media (max-width: 640px) {
+  .animate-scroll-up,
+  .animate-scroll-down {
+    animation-duration: 30s;
+  }
+}
+
+/* Add this to your existing App.css */
+.main-content {
+  padding-top: 64px; /* Height of the navbar */
+}

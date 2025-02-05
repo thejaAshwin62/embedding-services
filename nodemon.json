@@ -1,0 +1,13 @@
+{
+  "watch": [
+    "app.js",
+    "controllers/",
+    "services/",
+    "middleware/",
+    "models/",
+    "routes/"
+  ],
+  "ext": ".js,.json",
+  "ignore": ["uploads/*"],
+  "exec": "node app.js"
+} 

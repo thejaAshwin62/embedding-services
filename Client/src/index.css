@@ -1,0 +1,136 @@
+/* Add these styles for the map */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  min-width: 200px;
+  max-width: 250px;
+}
+
+.leaflet-popup-content p {
+  margin: 5px 0;
+}
+
+.marker-cluster {
+  background-color: rgba(49, 130, 206, 0.6);
+  border-radius: 50%;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Update popup styles */
+.leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 8px;
+}
+
+.leaflet-popup {
+  margin-bottom: 60px;
+}
+
+/* Timeline styles */
+.timeline-container {
+  background-color: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.vis-timeline {
+  border: none !important;
+  font-family: inherit !important;
+  font-size: 10px !important;
+}
+
+@media (min-width: 640px) {
+  .vis-timeline {
+    font-size: 12px !important;
+  }
+}
+
+.vis-item {
+  border-color: #e5e7eb !important;
+  background-color: white !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  min-height: 36px !important;
+}
+
+@media (min-width: 640px) {
+  .vis-item {
+    min-height: 48px !important;
+  }
+}
+
+.vis-item.vis-selected {
+  background-color: #f3f4f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+.vis-time-axis .vis-text {
+  color: #4b5563 !important;
+  font-size: 9px !important;
+}
+
+@media (min-width: 640px) {
+  .vis-time-axis .vis-text {
+    font-size: 11px !important;
+  }
+}
+
+.vis-panel.vis-center {
+  border-color: #e5e7eb !important;
+}
+
+.vis-timeline {
+  background-color: white !important;
+}
+
+.vis-item .vis-item-content {
+  padding: 0 !important;
+}
+
+/* Responsive font sizes for timeline labels */
+.vis-time-axis .vis-text.vis-major {
+  font-size: 10px !important;
+}
+
+@media (min-width: 640px) {
+  .vis-time-axis .vis-text.vis-major {
+    font-size: 12px !important;
+  }
+}
+
+/* Better touch targets for mobile while keeping compact size */
+.vis-item {
+  min-height: 36px !important;
+}
+
+@media (min-width: 640px) {
+  .vis-item {
+    min-height: 48px !important;
+  }
+}

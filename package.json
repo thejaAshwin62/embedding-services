@@ -1,0 +1,32 @@
+{
+  "name": "cursor",
+  "version": "1.0.0",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "setup-project": "npm i && cd Client && npm i",
+    "server": "nodemon server",
+    "client": "cd Client && npm run dev",
+    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\""
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@huggingface/inference": "^2.8.1",
+    "@pinecone-database/pinecone": "^4.0.0",
+    "axios": "^1.7.7",
+    "concurrently": "^9.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "mongoose": "^8.7.3",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.7.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
