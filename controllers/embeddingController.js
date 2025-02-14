@@ -77,26 +77,33 @@ export const embedFeedbacks = async () => {
     client = await mongoClient.connect();
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
-    const index = pinecone.index("multi-emb");
+    const textIndex = pinecone.index("multi-emb"); // Pinecone index for text embeddings
+    const faceIndex = pinecone.index("face-emb"); // Pinecone index for face embeddings
 
     const feedbacks = await collection.find({ embedded: false }).toArray();
     console.log(`Found ${feedbacks.length} non-embedded feedbacks`);
 
     const results = [];
+
     for (const feedback of feedbacks) {
       try {
         if (feedback.id_date && feedback.id_time && feedback.feedback) {
           const timeRange = generateTimeRange(feedback.id_time);
           const combinedInput = `Date: ${feedback.id_date}, TimeRange: ${timeRange.range}, Time: ${feedback.id_time}, Feedback: ${feedback.feedback}`;
 
-          console.log("Generating embedding for:", combinedInput);
-          const embeddings = await generateEmbedding(combinedInput);
+          console.log("Generating text embedding for:", combinedInput);
+          const textEmbedding = await generateEmbedding(combinedInput);
 
-          if (!embeddings || !Array.isArray(embeddings)) {
-            throw new Error("Invalid embedding response");
+          if (!textEmbedding || !Array.isArray(textEmbedding)) {
+            throw new Error("Invalid text embedding response");
           }
 
-          // Format location data for Pinecone metadata
+          // Extract face embeddings if available
+          const faceEmbedding = feedback.faceData?.length
+            ? feedback.faceData
+            : [];
+
+          // Prepare metadata for Pinecone
           const metadata = {
             id_date: feedback.id_date,
             id_time: feedback.id_time,
@@ -106,26 +113,40 @@ export const embedFeedbacks = async () => {
             feedback: feedback.feedback,
           };
 
-          // Add location data if available, only including simple fields
+          // Include location data if available
           if (feedback.location) {
-            metadata.location_city = feedback.location.city || '';
-            metadata.location_region = feedback.location.region || '';
-            metadata.location_country = feedback.location.country || '';
-            metadata.location_area = feedback.location.area || '';
-            metadata.location_street = feedback.location.street || '';
-            metadata.location_locality = feedback.location.locality || '';
-            metadata.location_zip = feedback.location.zip || '';
-            metadata.location_address = feedback.location.formatted_address || '';
+            metadata.location_city = feedback.location.city || "";
+            metadata.location_region = feedback.location.region || "";
+            metadata.location_country = feedback.location.country || "";
+            metadata.location_area = feedback.location.area || "";
+            metadata.location_street = feedback.location.street || "";
+            metadata.location_locality = feedback.location.locality || "";
+            metadata.location_zip = feedback.location.zip || "";
+            metadata.location_address =
+              feedback.location.formatted_address || "";
           }
 
-          await index.upsert([
+          // Store text embeddings in Pinecone ("multi-emb")
+          await textIndex.upsert([
             {
               id: feedback._id.toString(),
-              values: embeddings,
+              values: textEmbedding,
               metadata: metadata,
             },
           ]);
 
+          // Store face embeddings in Pinecone ("face-emb") if available
+          if (faceEmbedding.length) {
+            await faceIndex.upsert([
+              {
+                id: feedback._id.toString(),
+                values: faceEmbedding,
+                metadata: { id: feedback._id.toString() }, // Minimal metadata for face embeddings
+              },
+            ]);
+          }
+
+          // Update MongoDB with both embeddings
           await collection.updateOne(
             { _id: feedback._id },
             {
@@ -134,6 +155,8 @@ export const embedFeedbacks = async () => {
                 timeRange: timeRange.range,
                 timeStart: timeRange.start,
                 timeEnd: timeRange.end,
+                textEmbedding: textEmbedding, // Store in MongoDB
+                faceEmbedding: faceEmbedding, // Store in MongoDB
               },
             }
           );
