@@ -32,9 +32,10 @@ const SignIn = () => {
           }}
           routing="path"
           path="/sign-in"
-          signUpUrl="/sign-up"
-          afterSignInUrl="/get-started"
-          afterSignUpUrl="/get-started"
+          signUpUrl={import.meta.env.VITE_CLERK_SIGN_UP_URL}
+          afterSignInUrl={import.meta.env.VITE_CLERK_AFTER_SIGN_IN_URL}
+          afterSignUpUrl={import.meta.env.VITE_CLERK_AFTER_SIGN_UP_URL}
+          redirectUrl="/sign-in/sso-callback"
         />
       </div>
     </div>

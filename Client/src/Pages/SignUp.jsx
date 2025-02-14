@@ -32,9 +32,9 @@ const SignUp = () => {
           }}
           routing="path"
           path="/sign-up"
-          signInUrl="/sign-in"
-          afterSignInUrl="/get-started"
-          afterSignUpUrl="/get-started"
+          signInUrl={import.meta.env.VITE_CLERK_SIGN_IN_URL}
+          afterSignInUrl={import.meta.env.VITE_CLERK_AFTER_SIGN_IN_URL}
+          afterSignUpUrl={import.meta.env.VITE_CLERK_AFTER_SIGN_UP_URL}
         />
       </div>
     </div>

@@ -1,8 +1,10 @@
-export const errorHandler = (err, req, res, next) => {
-  console.error(err.stack);
-  
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-}; 
+import { StatusCodes } from "http-status-codes";
+const errorHandlerMiddleware = (err, req, res, next) => {
+  console.log(err);
+  const statusCode = err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
+  const msg = err.message || "Something went wrong, try again later";
+
+  res.status(statusCode).json({ msg });
+};
+
+export default errorHandlerMiddleware;

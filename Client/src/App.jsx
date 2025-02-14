@@ -1,7 +1,12 @@
 import React from "react";
 import "./App.css";
 import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Navbar from "./Componenets/Navbar";
 import Hero from "./Pages/Hero";
 import SignIn from "./Pages/SignIn";
@@ -10,7 +15,7 @@ import GetStarted from "./Pages/GetStarted";
 import ChatBot from "./Pages/ChatBot";
 import SetupCamera from "./Pages/SetupCamera";
 import StartRecording from "./Pages/StartRecording";
-import { ChatProvider } from './Context/ChatContext';
+import { ChatProvider } from "./Context/ChatContext";
 import About from "./Pages/About";
 import LearnMore from "./Pages/LearnMore";
 import Contact from "./Pages/Contact";
@@ -55,14 +60,8 @@ const App = () => {
                   </SignedOut>
                 }
               />
-              <Route
-                path="/get-started"
-                element={
-                
-                    <GetStarted />
-                 
-                }
-              />
+              <Route path="/sign-in/sso-callback" element={<SignIn />} />
+              <Route path="/get-started" element={<GetStarted />} />
               <Route
                 path="/get-started/*"
                 element={
@@ -70,7 +69,10 @@ const App = () => {
                     <Routes>
                       <Route path="chatbot" element={<ChatBot />} />
                       <Route path="setup-camera" element={<SetupCamera />} />
-                      <Route path="start-recording" element={<StartRecording />} />
+                      <Route
+                        path="start-recording"
+                        element={<StartRecording />}
+                      />
                     </Routes>
                   </ProtectedRoute>
                 }

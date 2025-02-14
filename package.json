@@ -4,10 +4,15 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "setup-project": "npm i && cd Client && npm i",
-    "server": "nodemon server",
-    "client": "cd Client && npm run dev",
-    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\""
+    "server": "nodemon index",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\"",
+    "setup-production": "npm install && npm run build-client",
+    "build-client": "cd client && npm install && npm run build && cd .. && npm run move-dist",
+    "move-dist-windows": "if exist public rmdir /s /q public && mkdir public && xcopy /s /e /y client\\dist\\* public\\",
+    "move-dist-unix": "rm -rf public && mkdir public && cp -r client/dist/* public/",
+    "move-dist": "node -e \"if (process.platform === 'win32') { require('child_process').execSync('npm run move-dist-windows', {stdio: 'inherit'}) } else { require('child_process').execSync('npm run move-dist-unix', {stdio: 'inherit'}) }\"",
+    "start": "node index.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -15,9 +20,11 @@
     "@pinecone-database/pinecone": "^4.0.0",
     "axios": "^1.7.9",
     "concurrently": "^9.0.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "http-status-codes": "^2.3.0",
     "mongoose": "^8.7.3",
     "multer": "^1.4.5-lts.1",
     "node-fetch": "^2.7.0",

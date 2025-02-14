@@ -27,9 +27,9 @@ export const ChatProvider = ({ children }) => {
 
           const response = await customFetch.get(`/chat-history/${user.id}`);
 
-          const sortedChats = response.data.chats.sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-          );
+          const sortedChats = response.data.chats
+            ? response.data.chats.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            : [];
 
           setChats(sortedChats);
         } catch (error) {
