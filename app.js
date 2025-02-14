@@ -54,7 +54,7 @@ connectDB().catch(err => {
 });
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "*", // Allow all origins (for testing)
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
