@@ -3,6 +3,7 @@ import fetch from "node-fetch";
 import FormData from "form-data";
 import dotenv from "dotenv";
 import { generateCaptionFromText } from "./DeepSeekService.js";
+import { FACE_SERVICE } from "../utils/config.js";
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ export class ImageService {
     this.apiToken = apiToken;
     this.objectDetectionUrl =
       "https://api-inference.huggingface.co/models/facebook/detr-resnet-50";
-    this.faceApiUrl = "http://localhost:5500/upload";
+    this.faceApiUrl = `${FACE_SERVICE}/upload`;
   }
 
   async generateCaption(filename) {
@@ -129,11 +130,9 @@ Enhance the details and explain the scenario clearly, but do not reference or in
       console.log("Face Embedding:", result);
 
       // Send the embedding to the face matching API
-      const matchResponse = await fetch("http://localhost:5500/match-face", {
+      const matchResponse = await fetch(`${FACE_SERVICE}/match-face`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result),
       });
 
@@ -161,8 +160,12 @@ Enhance the details and explain the scenario clearly, but do not reference or in
 
   async cleanup(filepath) {
     try {
-      await fs.promises.unlink(filepath);
-      console.log("Successfully cleaned up file:", filepath);
+      if (fs.existsSync(filepath)) {
+        await fs.promises.unlink(filepath);
+        console.log("Successfully cleaned up file:", filepath);
+      } else {
+        console.warn("File not found during cleanup:", filepath);
+      }
     } catch (error) {
       console.error("Error cleaning up file:", error);
       throw error;

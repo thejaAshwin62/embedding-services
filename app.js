@@ -28,9 +28,9 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Ensure uploads directory exists
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
+// Ensure tmp directory exists
+if (!fs.existsSync('tmp')) {
+  fs.mkdirSync('tmp');
 }
 
 // Database connection with retry logic
@@ -78,4 +78,4 @@ app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-export default app; 
+export default app;
