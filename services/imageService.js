@@ -129,6 +129,11 @@ Enhance the details and explain the scenario clearly, but do not reference or in
       const result = await response.json();
       console.log("Face Embedding:", result);
 
+      // Check if the response indicates no face detected
+      if (result.message === "No face detected") {
+        return { embedding: null, match: "unknownPerson" };
+      }
+
       // Send the embedding to the face matching API
       const matchResponse = await fetch(`${FACE_SERVICE}/match-face`, {
         method: "POST",
@@ -146,8 +151,8 @@ Enhance the details and explain the scenario clearly, but do not reference or in
       let nameDetail = await matchResponse.json();
       console.log("Face Name Match Result:", nameDetail);
 
-      // Set nameDetails to "unknownPerson" if it doesn't match
-      if (!nameDetail.match) {
+      // Set nameDetails to "unknownPerson" if it doesn't match, score is below 0.9, or no match found
+      if (!nameDetail.match || nameDetail.score < 0.85 || nameDetail.message === "No match found") {
         nameDetail = { match: "unknownPerson" };
       }
 
