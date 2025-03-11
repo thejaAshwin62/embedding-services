@@ -14,7 +14,7 @@ ${text}
 Generate a completely fresh description based solely on the details provided above. Do not reference or incorporate any previous descriptions.`;
 
     const response = await together.chat.completions.create({
-      model: "deepseek-ai/deepseek-llm-67b-chat",
+      model: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free", // Updated to requested model
       messages: [
         {
           role: "system",
