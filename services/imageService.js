@@ -15,7 +15,7 @@ export class ImageService {
     this.apiUrl = apiUrl;
     this.apiToken = apiToken;
     this.objectDetectionUrl =
-      "https://api-inference.huggingface.co/models/facebook/detr-resnet-50";
+    "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-50";
     this.faceApiUrl = `${FACE_SERVICE}/upload`;
   }
 

@@ -1,11 +1,8 @@
 import { Pinecone } from "@pinecone-database/pinecone";
-import { HfInference } from "@huggingface/inference";
 import dotenv from "dotenv";
+import { generateEmbedding } from '../utils/embeddingUtil.js';
 
 dotenv.config();
-
-const hf = new HfInference(process.env.HF_ACCESS_TOKEN);
-const HUGGINGFACE_MODEL = "intfloat/multilingual-e5-large";
 
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,
@@ -37,20 +34,6 @@ const TIME_PERIODS = {
     timeRange: "19:00:00-20:00:00",
   },
 };
-
-async function generateEmbedding(text) {
-  try {
-    const response = await hf.featureExtraction({
-      model: HUGGINGFACE_MODEL,
-      inputs: text,
-      options: { waitForModel: true },
-    });
-    return response;
-  } catch (error) {
-    console.error("Error generating embedding:", error);
-    throw error;
-  }
-}
 
 function convertTimeFormat(timeStr, modifier) {
   let [hours, minutes, seconds = "00"] = timeStr
@@ -321,4 +304,4 @@ export async function performSemanticSearch(query) {
     console.error("Error in semantic search:", error);
     throw error;
   }
-} 
+}

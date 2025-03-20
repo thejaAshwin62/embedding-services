@@ -14,6 +14,7 @@ import globalChatRoutes from "./routes/globalChatRoutes.js";
 import errorHandlerMiddleware from "./middleware/errorHandler.js";
 import cors from "cors";
 import fs from "fs";
+import loggerMiddleware from "./middleware/loggerHandler.js";
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +23,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+app.use(loggerMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(

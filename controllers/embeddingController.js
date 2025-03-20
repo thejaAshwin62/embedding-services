@@ -2,6 +2,7 @@ import { MongoClient } from "mongodb";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { HfInference } from "@huggingface/inference";
 import dotenv from "dotenv";
+import { generateEmbedding } from '../utils/embeddingUtil.js';
 
 dotenv.config();
 
@@ -42,33 +43,6 @@ function generateTimeRange(time) {
     end: endTime,
     range: `${startTime}-${endTime}`,
   };
-}
-
-async function generateEmbedding(text, maxRetries = 3) {
-  let lastError;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await hf.featureExtraction({
-        model: HUGGINGFACE_MODEL,
-        inputs: text,
-        options: {
-          waitForModel: true,
-          useCache: false,
-        },
-      });
-      return response;
-    } catch (error) {
-      console.error(`Attempt ${attempt + 1} failed:`, error);
-      lastError = error;
-      // Wait before retrying (exponential backoff)
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.pow(2, attempt) * 1000)
-      );
-    }
-  }
-  throw new Error(
-    `Failed after ${maxRetries} attempts. Last error: ${lastError.message}`
-  );
 }
 
 export const embedFeedbacks = async () => {
