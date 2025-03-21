@@ -84,9 +84,5 @@ app.use(errorHandlerMiddleware);
 app.use("*", (req, res) => {
   res.status(404).json({ msg: "not found" });
 });
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
 
 export default app;
