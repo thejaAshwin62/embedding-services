@@ -4,9 +4,9 @@ import { useUser } from "@clerk/clerk-react";
 
 import { useChat } from "../Context/ChatContext";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 import customFetch from "../utils/customFetch";
+
+import { getChatResponse, createNewChat } from "../utils/geminiService";
 
 const GlobalChatBot = () => {
   const { user } = useUser();
@@ -23,45 +23,12 @@ const GlobalChatBot = () => {
 
   const [chatHistory, setChatHistory] = useState([]);
 
-  // Initialize Gemini without initial history
-
-  const genAI = useMemo(
-    () => new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY),
-    []
-  );
-
-  const model = useMemo(
-    () => genAI.getGenerativeModel({ model: "gemini-pro" }),
-    [genAI]
-  );
-
-  // Remove the chat initialization from useMemo
-
+  // Initialize chat instance when component mounts
   const [chatInstance, setChatInstance] = useState(null);
 
-  // Initialize chat instance when needed
-
-  const initChat = (history = []) => {
-    return model.startChat({
-      generationConfig: {
-        maxOutputTokens: 2048,
-
-        temperature: 0.7,
-
-        topP: 0.8,
-
-        topK: 40,
-      },
-    });
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    setChatInstance(createNewChat());
+  }, []);
 
   // Load messages from database
 
@@ -96,7 +63,9 @@ Feel free to ask me anything! I'm here to assist you.`,
 
             sender: "bot",
 
-            timestamp: new Date().toLocaleTimeString([], {
+            timestamp: new Date().toISOString(),
+
+            displayTime: new Date().toLocaleTimeString([], {
               hour: "2-digit",
 
               minute: "2-digit",
@@ -113,10 +82,6 @@ Feel free to ask me anything! I'm here to assist you.`,
             message: welcomeMessage,
           });
         }
-
-        // Initialize new chat instance
-
-        setChatInstance(initChat());
       } catch (error) {
         console.error("Error loading messages:", error);
       }
@@ -125,28 +90,65 @@ Feel free to ask me anything! I'm here to assist you.`,
     if (user?.id) {
       loadMessages();
     }
-  }, [user?.id, userName, model]);
+  }, [user?.id, userName, aiName]);
 
+  // Add formatDate helper function
+  const formatDate = (date) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const messageDate = new Date(date);
+    const dayName = messageDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+    if (messageDate.toDateString() === today.toDateString()) {
+      return `Today · ${dayName}`;
+    } else if (messageDate.toDateString() === yesterday.toDateString()) {
+      return `Yesterday · ${dayName}`;
+    } else {
+      return messageDate.toLocaleDateString('en-US', { 
+        weekday: 'long',
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+  };
+
+  // Add groupMessagesByDate function
+  const groupMessagesByDate = (messages) => {
+    const groups = {};
+    
+    messages.forEach(message => {
+      const date = message.timestamp ? new Date(message.timestamp).toDateString() : new Date().toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+    });
+
+    return Object.entries(groups).map(([date, messages]) => ({
+      date,
+      messages
+    }));
+  };
+
+  // Modify handleSubmit to include full date
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!inputMessage.trim() || !chatInstance) return;
 
+    const currentDate = new Date();
     const userMessage = {
       id: Date.now().toString(),
-
       content: inputMessage,
-
       sender: "user",
-
-      timestamp: new Date().toLocaleTimeString([], {
+      timestamp: currentDate.toISOString(),
+      displayTime: currentDate.toLocaleTimeString([], {
         hour: "2-digit",
-
         minute: "2-digit",
       }),
-
       userId: user?.id,
-
       userName: userName,
     };
 
@@ -163,29 +165,27 @@ Feel free to ask me anything! I'm here to assist you.`,
         message: userMessage,
       });
 
-      // Get Gemini response using the existing chat instance
+      // Get Gemini response using the chat service
+      const { text: botResponse, chatInstance: updatedChat } = await getChatResponse(
+        inputMessage,
+        chatInstance
+      );
 
-      const result = await chatInstance.sendMessage(inputMessage);
-
-      const response = await result.response;
-
-      const botResponse = response.text();
+      // Update chat instance if needed
+      if (updatedChat) {
+        setChatInstance(updatedChat);
+      }
 
       const botMessage = {
         id: Date.now().toString(),
-
         content: botResponse,
-
         sender: "bot",
-
-        timestamp: new Date().toLocaleTimeString([], {
+        timestamp: new Date().toISOString(),
+        displayTime: new Date().toLocaleTimeString([], {
           hour: "2-digit",
-
           minute: "2-digit",
         }),
-
         userId: "bot",
-
         userName: aiName,
       };
 
@@ -208,7 +208,9 @@ Feel free to ask me anything! I'm here to assist you.`,
 
         sender: "bot",
 
-        timestamp: new Date().toLocaleTimeString([], {
+        timestamp: new Date().toISOString(),
+
+        displayTime: new Date().toLocaleTimeString([], {
           hour: "2-digit",
 
           minute: "2-digit",
@@ -237,6 +239,10 @@ Feel free to ask me anything! I'm here to assist you.`,
 
       setMessages([]); // Clear messages locally
 
+      // Create new chat instance
+      const newChatInstance = createNewChat();
+      setChatInstance(newChatInstance);
+
       // Add welcome message after clearing
 
       const welcomeMessage = {
@@ -260,7 +266,9 @@ Feel free to ask me anything! I'm here to assist you.`,
 
         sender: "bot",
 
-        timestamp: new Date().toLocaleTimeString([], {
+        timestamp: new Date().toISOString(),
+
+        displayTime: new Date().toLocaleTimeString([], {
           hour: "2-digit",
 
           minute: "2-digit",
@@ -276,10 +284,6 @@ Feel free to ask me anything! I'm here to assist you.`,
       await customFetch.post(`/global-chat/${user.id}`, {
         message: welcomeMessage,
       });
-
-      // Initialize new chat instance
-
-      setChatInstance(initChat());
     } catch (error) {
       console.error("Error clearing global chat:", error);
     }
@@ -293,51 +297,67 @@ Feel free to ask me anything! I'm here to assist you.`,
     }
   }, []);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-64px)] md:h-full">
       {/* Messages Container */}
-
-      <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-4 bg-gray-50">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`chat ${
-              message.sender === "user" ? "chat-end" : "chat-start"
-            }`}
-          >
-            <div className="chat-image avatar placeholder">
-              <div
-                className={`w-10 rounded-full ${
-                  message.sender === "user"
-                    ? "bg-blue-500 text-white"
-                    : "bg-primary-950 text-white"
-                }`}
-              >
-                <span>
-                  {message.sender === "user" ? userName[0] : aiName[0]}
+      <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-6 bg-gray-50">
+        {groupMessagesByDate(messages).map(({ date, messages: dateMessages }, groupIndex) => (
+          <div key={date} className="space-y-4">
+            <div className="sticky top-0 z-10 flex items-center justify-center py-2">
+              <div className="bg-primary-950/5 backdrop-blur-sm px-4 py-1.5 rounded-full border border-primary-950/10">
+                <span className="text-sm font-medium text-primary-950">
+                  {formatDate(date)}
                 </span>
               </div>
             </div>
-
-            <div className="chat-header mb-1 text-gray-600">
-              {message.sender === "user" ? userName : aiName}
-
-              {message.timestamp && (
-                <time className="text-xs opacity-50 ml-2">
-                  {message.timestamp}
-                </time>
-              )}
-            </div>
-
-            <div
-              className={`chat-bubble ${
-                message.sender === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-white text-gray-800 border border-gray-200"
-              }`}
-            >
-              {message.content}
-            </div>
+            
+            {dateMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`chat ${
+                  message.sender === "user" ? "chat-end" : "chat-start"
+                }`}
+              >
+                <div className="chat-image avatar placeholder">
+                  <div
+                    className={`w-10 rounded-full ${
+                      message.sender === "user"
+                        ? "bg-blue-500 text-white"
+                        : "bg-primary-950 text-white"
+                    }`}
+                  >
+                    <span>
+                      {message.sender === "user" ? userName[0] : aiName[0]}
+                    </span>
+                  </div>
+                </div>
+                <div className="chat-header mb-1 text-gray-600">
+                  {message.sender === "user" ? userName : aiName}
+                  {message.displayTime && (
+                    <time className="text-xs opacity-50 ml-2">
+                      {message.displayTime}
+                    </time>
+                  )}
+                </div>
+                <div
+                  className={`chat-bubble ${
+                    message.sender === "user"
+                      ? "bg-blue-500 text-white"
+                      : "bg-white text-gray-800 border border-gray-200"
+                  }`}
+                >
+                  {message.content}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
 
@@ -362,7 +382,6 @@ Feel free to ask me anything! I'm here to assist you.`,
       </div>
 
       {/* Input Form */}
-
       <div className="p-2 sm:p-4 bg-white border-t">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input

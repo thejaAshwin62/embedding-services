@@ -76,12 +76,15 @@ const Navbar = () => {
 
   return (
     <>
-      <section className="fixed top-0 left-0 right-0 bg-white z-[1000] min-h-[64px] shadow-sm">
+      <section className="fixed top-0 left-0 right-0 bg-white z-[1000] min-h-[64px] ">
         <div className="max-w-[2000px] mx-auto px-4 sm:px-6 md:px-10 h-16 flex items-center">
           <div className="flex justify-between items-center w-full">
-            <Link to="/">
-              <img src={Logo} alt="Logo" className="h-8 w-8 sm:h-10 sm:w-10" />
-            </Link>
+            <div className="flex items-center space-x-2">
+              <Link to="/" className="flex items-center space-x-2">
+                <img src={Logo} alt="Logo" className="h-8 w-8 sm:h-10 sm:w-10" />
+                <span className="text-lg font-bold text-slate-900">MindSync</span>
+              </Link>
+            </div>
 
             {/* Mobile Menu Button */}
             <button

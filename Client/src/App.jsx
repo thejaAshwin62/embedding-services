@@ -17,7 +17,6 @@ import SetupCamera from "./Pages/SetupCamera";
 import StartRecording from "./Pages/StartRecording";
 import { ChatProvider } from "./Context/ChatContext";
 import About from "./Pages/About";
-import LearnMore from "./Pages/LearnMore";
 import Contact from "./Pages/Contact";
 import SignUp from "./Pages/SignUp";
 
@@ -86,7 +85,7 @@ const App = () => {
                 }
               />
               <Route path="/about" element={<About />} />
-              <Route path="/learn-more" element={<LearnMore />} />
+              
               <Route path="/contact" element={<Contact />} />
             </Routes>
           </div>

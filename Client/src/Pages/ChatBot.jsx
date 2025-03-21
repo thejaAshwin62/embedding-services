@@ -139,11 +139,36 @@ const ChatBot = () => {
     setIsSidebarOpen(false);
   };
 
+  // Modify the formatDate function to be more detailed
+  const formatDate = (date) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const messageDate = new Date(date);
+    const dayName = messageDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+    if (messageDate.toDateString() === today.toDateString()) {
+      return `Today · ${dayName}`;
+    } else if (messageDate.toDateString() === yesterday.toDateString()) {
+      return `Yesterday · ${dayName}`;
+    } else {
+      return messageDate.toLocaleDateString('en-US', { 
+        weekday: 'long',
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+  };
+
+  // Modify the message creation in handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputMessage.trim() || !currentChatId) return;
 
     const userQuery = inputMessage;
+    const currentDate = new Date().toISOString();
 
     // Create and immediately display user message
     const userMessage = {
@@ -154,6 +179,7 @@ const ChatBot = () => {
         hour: "2-digit",
         minute: "2-digit",
       }),
+      date: currentDate, // Add date field
     };
 
     // Add user message to chat immediately
@@ -195,6 +221,7 @@ const ChatBot = () => {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        date: currentDate, // Add date field
         userQuery: userQuery,
       };
 
@@ -217,6 +244,24 @@ const ChatBot = () => {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  // Add this function to group messages by date
+  const groupMessagesByDate = (messages) => {
+    const groups = {};
+    
+    messages.forEach(message => {
+      const date = message.date ? new Date(message.date).toDateString() : new Date().toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+    });
+
+    return Object.entries(groups).map(([date, messages]) => ({
+      date,
+      messages
+    }));
   };
 
   // Add function to group chats by time period
@@ -909,54 +954,66 @@ const ChatBot = () => {
           // Personal Chat Content
           <div className="flex-1 flex flex-col h-full">
             {/* Messages Container */}
-            <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4 bg-gray-50">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`chat ${
-                    message.sender === "user" ? "chat-end" : "chat-start"
-                  }`}
-                >
-                  <div className="chat-image avatar placeholder">
-                    <div
-                      className={`w-10 rounded-full ${
-                        message.sender === "user"
-                          ? "bg-blue-500 text-white"
-                          : "bg-primary-950 text-white"
-                      }`}
-                    >
-                      <span>
-                        {message.sender === "user" ? userName[0] : aiName[0]}
+            <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-6 bg-gray-50">
+              {groupMessagesByDate(messages).map(({ date, messages: dateMessages }, groupIndex) => (
+                <div key={date} className="space-y-4">
+                  <div className="sticky top-0 z-10 flex items-center justify-center py-2">
+                    <div className="bg-primary-950/5 backdrop-blur-sm px-4 py-1.5 rounded-full border border-primary-950/10">
+                      <span className="text-sm font-medium text-primary-950">
+                        {formatDate(date)}
                       </span>
                     </div>
                   </div>
-                  <div className="chat-header mb-1 text-gray-600">
-                    {message.sender === "user" ? userName : aiName}
-                    {message.timestamp && (
-                      <time className="text-xs opacity-50 ml-2">
-                        {message.timestamp}
-                      </time>
-                    )}
-                  </div>
-                  <div
-                    className={`chat-bubble ${
-                      message.sender === "user"
-                        ? "bg-blue-500 text-white"
-                        : "bg-white text-gray-800 border border-gray-200"
-                    }`}
-                  >
-                    {message.sender === "bot" && message.userQuery && (
-                      <div className="text-sm text-gray-500 mb-2">
-                        <h1 className="font-medium bg-blue-500 text-white px-2 py-1 rounded-md">
-                          {" "}
-                          You asked: {message.userQuery}
-                        </h1>
+                  
+                  {dateMessages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`chat ${
+                        message.sender === "user" ? "chat-end" : "chat-start"
+                      }`}
+                    >
+                      <div className="chat-image avatar placeholder">
+                        <div
+                          className={`w-10 rounded-full ${
+                            message.sender === "user"
+                              ? "bg-blue-500 text-white"
+                              : "bg-primary-950 text-white"
+                          }`}
+                        >
+                          <span>
+                            {message.sender === "user" ? userName[0] : aiName[0]}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                    {message.content}
-                  </div>
+                      <div className="chat-header mb-1 text-gray-600">
+                        {message.sender === "user" ? userName : aiName}
+                        {message.timestamp && (
+                          <time className="text-xs opacity-50 ml-2">
+                            {message.timestamp}
+                          </time>
+                        )}
+                      </div>
+                      <div
+                        className={`chat-bubble ${
+                          message.sender === "user"
+                            ? "bg-blue-500 text-white"
+                            : "bg-white text-gray-800 border border-gray-200"
+                        }`}
+                      >
+                        {message.sender === "bot" && message.userQuery && (
+                          <div className="text-sm text-gray-500 mb-2">
+                            <h1 className="font-medium bg-blue-500 text-white px-2 py-1 rounded-md">
+                              You asked: {message.userQuery}
+                            </h1>
+                          </div>
+                        )}
+                        {message.content}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
+              
               {isTyping && (
                 <div className="chat chat-start">
                   <div className="chat-image avatar placeholder">
