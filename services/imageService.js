@@ -18,6 +18,7 @@ export class ImageService {
     "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-50";
     this.faceApiUrl = `${FACE_SERVICE}/upload`;
   }
+  
 
   async generateCaption(filename) {
     try {
