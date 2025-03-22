@@ -26,15 +26,10 @@ const PORT = process.env.PORT || 5000;
 app.use(loggerMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? process.env.CLIENT_URL // Your Render URL
-        : "http://localhost:5173",
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: '*',
+  credentials: true
+}));
 
 // Ensure uploads directory exists
 if (!fs.existsSync("uploads")) {
