@@ -7,6 +7,8 @@ import { FACE_SERVICE } from "../utils/config.js";
 
 dotenv.config();
 
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export class ImageService {
   constructor(apiUrl, apiToken) {
     if (!apiUrl || !apiToken) {
@@ -106,6 +108,24 @@ Enhance the details and explain the scenario clearly, but do not reference or in
     }
   }
 
+  async retryFetch(url, options, retries = 3, delay = 2000) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.ok) {
+          return response;
+        }
+        console.log(`Attempt ${i + 1} failed, retrying in ${delay}ms...`);
+        await wait(delay);
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        console.log(`Attempt ${i + 1} failed, retrying in ${delay}ms...`);
+        await wait(delay);
+      }
+    }
+    throw new Error(`Failed after ${retries} attempts`);
+  }
+
   async getFaceEmbedding(filename) {
     try {
       if (!fs.existsSync(filename)) {
@@ -115,44 +135,29 @@ Enhance the details and explain the scenario clearly, but do not reference or in
       const formData = new FormData();
       formData.append("image", fs.createReadStream(filename));
 
-      const response = await fetch(this.faceApiUrl, {
+      // First API call with retry mechanism
+      const response = await this.retryFetch(this.faceApiUrl, {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Face API error: ${response.status} ${response.statusText}\n${errorText}`
-        );
-      }
-
       const result = await response.json();
       console.log("Face Embedding:", result);
 
-      // Check if the response indicates no face detected
       if (result.message === "No face detected") {
         return { embedding: null, match: "unknownPerson" };
       }
 
-      // Send the embedding to the face matching API
-      const matchResponse = await fetch(`${FACE_SERVICE}/match-face`, {
+      // Second API call with retry mechanism
+      const matchResponse = await this.retryFetch(`${FACE_SERVICE}/match-face`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result),
       });
 
-      if (!matchResponse.ok) {
-        const errorText = await matchResponse.text();
-        throw new Error(
-          `Face match API error: ${matchResponse.status} ${matchResponse.statusText}\n${errorText}`
-        );
-      }
-
       let nameDetail = await matchResponse.json();
       console.log("Face Name Match Result:", nameDetail);
 
-      // Set nameDetails to "unknownPerson" if it doesn't match, score is below 0.9, or no match found
       if (!nameDetail.match || nameDetail.score < 0.85 || nameDetail.message === "No match found") {
         nameDetail = { match: "unknownPerson" };
       }
