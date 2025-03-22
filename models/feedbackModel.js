@@ -22,6 +22,8 @@ const feedbackSchema = new mongoose.Schema({
   timeEnd: { type: String },
   feedback: { type: String, required: true },
   embedded: { type: Boolean, default: false },
+  objectCount: { type: Number, default: 0 },
+  detectedObjects: { type: [String], default: [] }, // Store array of detected object names
   location: { 
     type: locationSchema, 
     required: true,
@@ -35,5 +37,6 @@ const feedbackSchema = new mongoose.Schema({
 feedbackSchema.index({ id_date: 1, id_time: 1 });
 feedbackSchema.index({ 'location.latitude': 1, 'location.longitude': 1 });
 feedbackSchema.index({ embedded: 1 });
+feedbackSchema.index({ detectedObjects: 1 }); // Add index for object queries
 
-export default mongoose.model('Feedback', feedbackSchema); 
+export default mongoose.model('Feedback', feedbackSchema);

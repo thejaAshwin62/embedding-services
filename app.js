@@ -9,6 +9,7 @@ import chatHistoryRoutes from "./routes/chatHistoryRoutes.js";
 import userQueryRoutes from "./routes/userQueryRoutes.js";
 import userPreferencesRoutes from "./routes/userPreferencesRoutes.js";
 import globalChatRoutes from "./routes/globalChatRoutes.js";
+import statsRouter from "./routes/statsRouter.js";
 import errorHandlerMiddleware from "./middleware/errorHandler.js";
 import cors from "cors";
 import fs from "fs";
@@ -51,6 +52,7 @@ connectDB();
 // Routes
 app.use("/api/v1", searchRoutes);
 app.use("/api/v1/feedback", feedbackRoutes);
+app.use("/api/v1/stats", statsRouter);
 app.use("/api/v1/embedding", embeddingRoutes);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/chat-history", chatHistoryRoutes);

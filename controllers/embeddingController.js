@@ -2,7 +2,7 @@ import { MongoClient } from "mongodb";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { HfInference } from "@huggingface/inference";
 import dotenv from "dotenv";
-import { generateEmbedding } from '../utils/embeddingUtil.js';
+import { generateEmbedding } from "../utils/embeddingUtil.js";
 
 dotenv.config();
 
