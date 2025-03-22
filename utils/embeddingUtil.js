@@ -46,7 +46,7 @@ export async function generateEmbedding(text, maxRetries = 5) {
           console.warn(
             `Service unavailable (503) for model ${currentModel}, retrying with longer delay...`
           );
-          const serviceUnavailableDelay = 5000 * attempt; // Longer delay for 503s
+          const serviceUnavailableDelay = 15000 * attempt; // Longer delay for 503s
           await wait(serviceUnavailableDelay);
           continue;
         }

@@ -1,5 +1,14 @@
 import Feedback from '../models/feedbackModel.js';
 import mongoose from 'mongoose';
+import { Pinecone } from "@pinecone-database/pinecone";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Initialize Pinecone client
+const pinecone = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY || "",
+});
 
 // Helper function to get date ranges
 const getDateRanges = () => {
@@ -219,6 +228,9 @@ export const getObjectStats = async (req, res) => {
       }
     ]);
     
+    // Calculate total instances of all objects combined
+    const totalObjectInstances = objectStats.reduce((total, obj) => total + obj.count, 0);
+    
     // Get average objects per image
     const avgObjectsPerImage = await Feedback.aggregate([
       {
@@ -235,10 +247,11 @@ export const getObjectStats = async (req, res) => {
     res.json({
       success: true,
       data: {
-        objectFrequency: objectStats,
-        totalObjects: totalObjectsCount.length > 0 ? totalObjectsCount[0].total : 0,
+        // objectFrequency: objectStats,
+        totalObjectsCount: totalObjectInstances, // Renamed for clarity
+        totalUniqueObjects: totalObjectsCount.length > 0 ? totalObjectsCount[0].total : 0,
         averagePerImage: avgObjectsPerImage.length > 0 ? avgObjectsPerImage[0].average : 0,
-        uniqueObjectTypes: objectStats.length
+        // uniqueObjectTypes: objectStats.length
       }
     });
   } catch (error) {
@@ -318,6 +331,63 @@ export const getObjectTrends = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch object detection trends',
+      error: error.message
+    });
+  }
+};
+
+// Get face index names and scores from Pinecone
+export const getFaceIndexStats = async (req, res) => {
+  try {
+    // Connect to the "faceindex" index in Pinecone
+    const faceIndex = pinecone.index("faceindex");
+    
+    // Use a zero vector matching your Pinecone index dimension (128 as per your DB info)
+    const VECTOR_DIMENSION = 128;
+    
+    // Query all vectors (or use pagination if there are many records)
+    const queryResponse = await faceIndex.query({
+      vector: Array(VECTOR_DIMENSION).fill(0), // Zero vector with correct dimension
+      topK: 10000, // Adjust based on your expected data size
+      includeMetadata: true
+    });
+    
+    if (!queryResponse.matches) {
+      return res.json({
+        success: true,
+        data: {
+          faceRecords: []
+        }
+      });
+    }
+    
+    // Extract names and scores from the response - keep all original data
+    const faceRecords = queryResponse.matches.map(match => {
+      const originalScore = match.score || 0;
+      
+      return {
+        id: match.id,
+        name: match.metadata?.name || "Unknown",
+        score: originalScore, // Keep original full score
+        // Display formatted score for UI purposes if needed
+      };
+    });
+
+    // Sort by score in descending order
+    faceRecords.sort((a, b) => b.score - a.score);
+    
+    res.json({
+      success: true,
+      data: {
+        faceRecords,
+        total: faceRecords.length
+      }
+    });
+  } catch (error) {
+    console.error('Error getting face index stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch face index statistics',
       error: error.message
     });
   }
