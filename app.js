@@ -1,8 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import { fileURLToPath } from "url";
-import path, { dirname } from "path";
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 import embeddingRoutes from "./routes/embeddingRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
@@ -57,6 +55,11 @@ connectDB().catch((err) => {
 });
 
 // Routes
+
+app.use("/", (req, res) => {
+  res.send("Welcome to the Embedding Service");
+});
+
 app.use("/api/v1", searchRoutes);
 app.use("/api/v1/feedback", feedbackRoutes);
 app.use("/api/v1/embedding", embeddingRoutes);
@@ -66,19 +69,15 @@ app.use("/api/v1/user-queries", userQueryRoutes);
 app.use("/api/v1/user-preferences", userPreferencesRoutes);
 app.use("/api/v1/global-chat", globalChatRoutes);
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.resolve(__dirname, "./public")));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.resolve(__dirname, "./public", "index.html"));
-});
-
 // Error handling
 app.use(errorHandlerMiddleware);
 
 app.use("*", (req, res) => {
   res.status(404).json({ msg: "not found" });
 });
+
+
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
