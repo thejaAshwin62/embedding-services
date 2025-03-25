@@ -15,7 +15,7 @@ router.get("/overall", getOverallStats);
 router.get("/daily/:period", getDailyBreakdown);
 router.get("/objects", getObjectStats);
 router.get("/faces", getFaceIndexStats);
-router.get("/get/wifi",wifiCredentialsCheck)
-router.post("/updateWifi",updateWifiCredentials)
+router.get("/get-wifi",wifiCredentialsCheck)
+router.post("/update-wifi",updateWifiCredentials)
 
 export default router;
