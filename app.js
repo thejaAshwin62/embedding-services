@@ -59,9 +59,10 @@ app.use("/api/v1/chat-history", chatHistoryRoutes);
 app.use("/api/v1/user-queries", userQueryRoutes);
 app.use("/api/v1/user-preferences", userPreferencesRoutes);
 app.use("/api/v1/global-chat", globalChatRoutes);
-app.use("/", (req, res) => {
-  res.send("Welcome to the Embedding Service API");
-});
+
+// app.use("/", (req, res) => {
+//   res.send("Welcome to the Embedding Service API");
+// });
 
 app.use("*", (req, res) => {
   res.status(404).json({ msg: "not found" });
