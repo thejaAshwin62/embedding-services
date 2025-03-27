@@ -458,4 +458,43 @@ export const updateWifiCredentials = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
+
+let captureInterval = {
+  interval: process.env.CAPTURE_INTERVAL || 120000,
+};
+
+export const getCaptureInterval = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: captureInterval,
+    });
+  } catch (error) {
+    console.error("Error getting capture interval:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch capture interval",
+      error: error.message,
+    });
+  }
+};
+
+export const updateCaptureInterval = async (req, res) => {
+  try {
+    const { interval } = req.body;
+    captureInterval = {
+      interval: interval || captureInterval.interval,
+    };
+    res.json({
+      success: true,
+      data: captureInterval,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update capture interval",
+      error: error.message,
+    });
+  }
+};

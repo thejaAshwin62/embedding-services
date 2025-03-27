@@ -6,6 +6,8 @@ import {
   getFaceIndexStats,
   wifiCredentialsCheck,
   updateWifiCredentials,
+  getCaptureInterval,
+  updateCaptureInterval,
 
 } from "../controllers/statsController.js";
 
@@ -17,5 +19,7 @@ router.get("/objects", getObjectStats);
 router.get("/faces", getFaceIndexStats);
 router.get("/get-wifi",wifiCredentialsCheck)
 router.post("/update-wifi",updateWifiCredentials)
+router.get("/get-capture-interval",getCaptureInterval)
+router.post("/update-capture-interval",updateCaptureInterval)
 
 export default router;
