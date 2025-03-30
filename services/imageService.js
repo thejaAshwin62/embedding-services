@@ -23,7 +23,10 @@ export class ImageService {
       "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-101",
       "https://router.huggingface.co/hf-inference/models/microsoft/resnet-50",
     ];
+    // Ensure we're using the correct URL with /upload endpoint
     this.faceApiUrl = `${FACE_SERVICE}/upload`;
+    
+    console.log("Face Service URL configured as:", this.faceApiUrl);
   }
 
   async generateCaption(filename) {
@@ -33,48 +36,65 @@ export class ImageService {
       }
 
       const data = fs.readFileSync(filename);
-      const response = await fetch(this.apiUrl, {
-        headers: {
-          Authorization: `Bearer ${this.apiToken}`,
-          "Content-Type": "application/octet-stream",
+      
+      // Use retryFetch with increased timeout and retries
+      const response = await this.retryFetch(
+        this.apiUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+            "Content-Type": "application/octet-stream",
+          },
+          method: "POST",
+          body: data,
         },
-        method: "POST",
-        body: data,
-      });
+        3, // 3 retries
+        2000, // 2s initial delay
+        20000 // 20s timeout
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(
-          `API error: ${response.status} ${response.statusText}\n${errorText}`
-        );
+        console.warn("Image caption API error:", errorText);
+        // Continue with a default caption
+        return "A scene captured in the image.";
       }
 
       const result = await response.json();
       const imageDetails = result[0]?.generated_text;
 
+      console.log("Image details from salesforce api:", imageDetails);
       if (!imageDetails) {
-        throw new Error("No details generated from image");
+        console.warn("No details generated from image");
+        return "A scene captured in the image.";
       }
 
       // Create a fresh prompt that emphasizes new generation
-      const freshPrompt = `Generate a completely new description for this image forgot the previous querry , make the response new from the fresh. 
+      const freshPrompt = `Generate a completely new description for this image, focusing on key observations.
 Base your description ONLY on these current details: ${imageDetails}
 
-Enhance the details and explain the scenario clearly, but do not reference or incorporate any previous descriptions.`;
+Requirements:
+- Keep it short and sweet (max 4-6 sentences)
+- Focus on key observations
+- Be direct and concise
+- Make it natural and observational
+- Do not reference any previous descriptions`;
 
-      // Get fresh caption
+      // Get fresh caption using DeepSeekService
       const caption = await generateCaptionFromText(freshPrompt);
 
       if (!caption) {
-        throw new Error("No caption generated");
+        console.warn("No caption generated from DeepSeek");
+        return "A scene captured in the image.";
       }
 
-      console.log("Generated fresh caption from DeepSeek:", caption);
+      console.log("Generated fresh caption:", caption);
 
       return caption;
     } catch (error) {
       console.error("Error generating caption:", error);
-      throw error;
+      // Return a default caption instead of throwing
+      return "A scene captured in the image.";
     }
   }
 
@@ -212,26 +232,33 @@ Enhance the details and explain the scenario clearly, but do not reference or in
     
     while (attempt < maxRetries) {
       try {
-        console.log(`Face API call attempt ${attempt + 1}/${maxRetries} to ${url}`);
+        console.log(`\nFace API call attempt ${attempt + 1}/${maxRetries} to ${url}`);
+        console.log("Request options:", {
+          method: options.method,
+          headers: options.headers,
+          bodySize: options.body ? (options.body instanceof FormData ? 'FormData' : JSON.stringify(options.body).length) : 0
+        });
+
         const response = await fetch(url, options);
         
         if (response.ok) {
-          console.log(`Successful face API response from ${url} on attempt ${attempt + 1}`);
+          console.log(`✅ Successful face API response from ${url} on attempt ${attempt + 1}`);
           return response;
         }
         
         const errorText = await response.text();
         lastError = new Error(`Status ${response.status}: ${errorText.substring(0, 100)}...`);
-        console.warn(`Face API call failed with status ${response.status}, retrying in 15 seconds...`);
+        console.warn(`❌ Face API call failed with status ${response.status}:`, errorText);
       } catch (error) {
         lastError = error;
-        console.warn(`Face API call error on attempt ${attempt + 1}: ${error.message}, retrying in 15 seconds...`);
+        console.warn(`❌ Face API call error on attempt ${attempt + 1}:`, error.message);
       }
       
       attempt++;
       if (attempt < maxRetries) {
-        console.log(`Waiting 15 seconds before retry ${attempt + 1}...`);
-        await wait(15000); // Wait exactly 15 seconds before retry
+        const delay = 15000; // 15 seconds
+        console.log(`⏳ Waiting ${delay/1000} seconds before retry ${attempt + 1}...`);
+        await wait(delay);
       }
     }
     
@@ -247,44 +274,88 @@ Enhance the details and explain the scenario clearly, but do not reference or in
       const formData = new FormData();
       formData.append("image", fs.createReadStream(filename));
 
-      // First API call with specialized face API retry mechanism
+      // First API call to get face embedding
+      console.log("\n=== Starting /upload Request ===");
+      console.log("Request URL:", this.faceApiUrl);
+      console.log("Request Method: POST");
+      console.log("Request Headers:", { "Content-Type": "multipart/form-data" });
+      
       const response = await this.retryFaceApiCall(this.faceApiUrl, {
         method: "POST",
         body: formData,
       });
 
       const result = await response.json();
-      console.log("Face Embedding:", result);
+      console.log("\n=== /upload Response ===");
+      console.log("Status:", response.status);
+      console.log("Response Body:", JSON.stringify(result, null, 2));
 
-      if (result.message === "No face detected") {
-        return { embedding: null, match: "unknownPerson" };
+      if (!result.success || !result.embedding) {
+        console.log("\n=== No Face Detected ===");
+        return { 
+          success: false,
+          embedding: null, 
+          match: "unknown person",
+          message: "No face detected in image"
+        };
       }
 
-      // Second API call with specialized face API retry mechanism
+      // Second API call to match face with the embedding
+      const matchUrl = `${FACE_SERVICE}/match-face`;
+      const matchRequestBody = {
+        embedding: result.embedding
+      };
+
+      console.log("\n=== Starting /match-face Request ===");
+      console.log("Request URL:", matchUrl);
+      console.log("Request Method: POST");
+      console.log("Request Headers:", { "Content-Type": "application/json" });
+      console.log("Request Body:", JSON.stringify(matchRequestBody, null, 2));
+
       const matchResponse = await this.retryFaceApiCall(
-        `${FACE_SERVICE}/match-face`,
+        matchUrl,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(result),
+          headers: { 
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(matchRequestBody)
         }
       );
 
-      let nameDetail = await matchResponse.json();
-      console.log("Face Name Match Result:", nameDetail);
+      const matchResult = await matchResponse.json();
+      console.log("\n=== /match-face Response ===");
+      console.log("Status:", matchResponse.status);
+      console.log("Response Body:", JSON.stringify(matchResult, null, 2));
 
-      if (
-        !nameDetail.match ||
-        nameDetail.score < 0.85 ||
-        nameDetail.message === "No match found"
-      ) {
-        nameDetail = { match: "unknownPerson" };
+      // Check if we have a valid match with score >= 0.90
+      if (matchResult.match && matchResult.score >= 0.90) {
+        console.log("\n=== Face Match Found ===");
+        return {
+          success: true,
+          embedding: result.embedding,
+          match: matchResult.match,
+          score: matchResult.score,
+          timestamp: matchResult.timestamp || new Date().toISOString()
+        };
       }
 
-      return { embedding: result, match: nameDetail };
+      console.log("\n=== No Match Found ===");
+      return { 
+        success: false,
+        embedding: result.embedding, 
+        match: "unknown person",
+        message: "No match found"
+      };
     } catch (error) {
-      console.error("Error getting face embedding:", error);
-      throw error;
+      console.error("\n=== Error in Face Recognition ===");
+      console.error("Error Details:", error.message);
+      return {
+        success: false,
+        embedding: null,
+        match: "unknown person",
+        message: error.message
+      };
     }
   }
 

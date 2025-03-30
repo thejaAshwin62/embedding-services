@@ -57,9 +57,6 @@ You were standing near ${
     name.toLowerCase() === "unknown person" ? "this person" : name
   }, observing the scene firsthand. ${personalizedCaption}  
 
-Current environment details:
-${locationContext} 
-
 Objects in view:
 These are the objects detected from the image: ${objectsContext}.  
 
@@ -70,6 +67,8 @@ Instructions:
 4. Convert this into a detailed AI-generated scenario where the user is being described the scene as if they were present
 5. Use "You were..." to make it immersive
 6. Ensure description is based solely on the current scene details
+7. Keep the response concise and focused (max 4-6 sentences)
+8. Make it natural and observational
 
 Return your response in this exact JSON format:
 {
@@ -129,6 +128,7 @@ export const createFeedback = async (req, res, next) => {
       };
     }
 
+    // Process image in parallel
     const [caption, detectedObjects, faceData] = await Promise.all([
       imageService.generateCaption(imagePath),
       imageService.detectObjects(imagePath),
@@ -139,8 +139,8 @@ export const createFeedback = async (req, res, next) => {
       throw new Error("Failed to generate caption");
     }
 
-    console.log("Name Detail from feedBack Controller:", faceData.match);
-    const nameDetails = faceData.match;
+    console.log("Face Detection Result:", faceData);
+    const nameDetails = faceData.match || "unknown person";
 
     const objectsContext = detectedObjects?.length
       ? `The image contains: ${detectedObjects.join(", ")}. `
@@ -163,7 +163,6 @@ export const createFeedback = async (req, res, next) => {
 
     console.log("AI response:", aiResponse);
 
-    // Use the new ensureValidJson function to handle the response
     const jsonFeedback = ensureValidJson(aiResponse);
 
     if (!jsonFeedback.feedback) {
@@ -181,15 +180,12 @@ export const createFeedback = async (req, res, next) => {
       }),
       feedback: jsonFeedback.feedback,
       embedded: false,
-      location: {
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        timestamp: locationData.timestamp,
-      },
-      imageLocation: imagePath,
+     
       detectedObjects: detectedObjects || [],
       faceData: faceData.embedding || null,
       faceMatch: faceData.match || null,
+      faceScore: faceData.score || null,
+      faceTimestamp: faceData.timestamp || null,
     });
 
     await feedback.save();
@@ -197,24 +193,29 @@ export const createFeedback = async (req, res, next) => {
     const embeddingResults = await embedFeedbacks();
 
     res.status(201).json({
+      success: true,
       message: "Feedback saved and embedded successfully",
       feedback: {
         id: feedback._id,
         date: feedback.id_date,
         time: feedback.id_time,
         text: feedback.feedback,
-        location: feedback.location,
         imageLocation: feedback.imageLocation,
         detectedObjects: feedback.detectedObjects,
-        faceData: feedback.faceData,
-        faceMatch: feedback.faceMatch,
-        nameDetails: faceData.match,
+        faceData: {
+          match: faceData.match,
+          score: faceData.score,
+          timestamp: faceData.timestamp
+        },
         embedding_status: embeddingResults,
       },
     });
   } catch (error) {
     console.error("Error in createFeedback:", error);
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error processing feedback",
+    });
   } finally {
     if (uploadedFile && uploadedFile.path) {
       await imageService

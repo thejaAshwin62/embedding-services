@@ -26,10 +26,9 @@ const feedbackSchema = new mongoose.Schema({
   detectedObjects: { type: [String], default: [] }, // Store array of detected object names
   location: { 
     type: locationSchema, 
-    required: true,
     _id: false  // Prevents Mongoose from creating an _id for the subdocument
   },
-  imageLocation: { type: String, required: true }, // Store the path where image is saved
+  imageLocation: { type: String }, // Store the path where image is saved
   createdAt: { type: Date, default: Date.now }
 });
 

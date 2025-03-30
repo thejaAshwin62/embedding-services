@@ -52,7 +52,7 @@ export const embedFeedbacks = async () => {
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
     const textIndex = pinecone.index("multi-emb"); // Pinecone index for text embeddings
-    const faceIndex = pinecone.index("face-emb"); // Pinecone index for face embeddings
+    // const faceIndex = pinecone.index("face-emb"); // Pinecone index for face embeddings
 
     const feedbacks = await collection.find({ embedded: false }).toArray();
     console.log(`Found ${feedbacks.length} non-embedded feedbacks`);
@@ -73,9 +73,9 @@ export const embedFeedbacks = async () => {
           }
 
           // Extract face embeddings if available
-          const faceEmbedding = feedback.faceData?.length
-            ? feedback.faceData
-            : [];
+          // const faceEmbedding = feedback.faceData?.length
+          //   ? feedback.faceData
+          //   : [];
 
           // Prepare metadata for Pinecone
           const metadata = {
@@ -110,15 +110,15 @@ export const embedFeedbacks = async () => {
           ]);
 
           // Store face embeddings in Pinecone ("face-emb") if available
-          if (faceEmbedding.length) {
-            await faceIndex.upsert([
-              {
-                id: feedback._id.toString(),
-                values: faceEmbedding,
-                metadata: { id: feedback._id.toString() }, // Minimal metadata for face embeddings
-              },
-            ]);
-          }
+          // if (faceEmbedding.length) {
+          //   await faceIndex.upsert([
+          //     {
+          //       id: feedback._id.toString(),
+          //       values: faceEmbedding,
+          //       metadata: { id: feedback._id.toString() }, // Minimal metadata for face embeddings
+          //     },
+          //   ]);
+          // }
 
           // Update MongoDB with both embeddings
           await collection.updateOne(
@@ -130,7 +130,7 @@ export const embedFeedbacks = async () => {
                 timeStart: timeRange.start,
                 timeEnd: timeRange.end,
                 textEmbedding: textEmbedding, // Store in MongoDB
-                faceEmbedding: faceEmbedding, // Store in MongoDB
+                // faceEmbedding: faceEmbedding, // Store in MongoDB
               },
             }
           );
