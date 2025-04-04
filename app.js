@@ -15,7 +15,6 @@ import cors from "cors";
 import fs from "fs";
 import loggerMiddleware from "./middleware/loggerHandler.js";
 
-
 // Load environment variables
 dotenv.config();
 
@@ -66,7 +65,7 @@ app.use("/api/v1/global-chat", globalChatRoutes);
 // });
 
 app.use("*", (req, res) => {
-  res.status(404).json({ msg: "not found" });
+  res.status(200).json({ msg: "embedding service" });
 });
 
 // Error handling
