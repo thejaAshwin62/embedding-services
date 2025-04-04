@@ -15,6 +15,7 @@ import cors from "cors";
 import fs from "fs";
 import loggerMiddleware from "./middleware/loggerHandler.js";
 
+
 // Load environment variables
 dotenv.config();
 

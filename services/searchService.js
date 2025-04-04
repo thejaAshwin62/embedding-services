@@ -1,6 +1,7 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 import dotenv from "dotenv";
 import { generateEmbedding } from '../utils/embeddingUtil.js';
+import UserQuery from '../models/userQueryModel.js';
 
 dotenv.config();
 
@@ -305,3 +306,59 @@ export async function performSemanticSearch(query) {
     throw error;
   }
 }
+
+export const userQueryService = {
+  async saveQuery(userId, query, chatId) {
+    try {
+      const newQuery = new UserQuery({
+        userId,
+        query,
+        chatId
+      });
+      await newQuery.save();
+      return newQuery;
+    } catch (error) {
+      console.error('Error saving user query:', error);
+      throw error;
+    }
+  },
+
+  async getQueriesByUserId(userId) {
+    try {
+      return await UserQuery.find({ userId }).sort({ timestamp: -1 });
+    } catch (error) {
+      console.error('Error getting user queries:', error);
+      throw error;
+    }
+  },
+
+  async testAccuracy(userId, expectedResults) {
+    try {
+      const queries = await this.getQueriesByUserId(userId);
+      const totalQueries = queries.length;
+      let relevantCount = 0;
+
+      // Check each query against expected results
+      queries.forEach(query => {
+        if (expectedResults.includes(query.query)) {
+          relevantCount++;
+        }
+      });
+
+      const precision = relevantCount / totalQueries;
+      const recall = relevantCount / expectedResults.length;
+      const f1Score = (2 * precision * recall) / (precision + recall);
+
+      return {
+        totalQueries,
+        relevantCount,
+        precision,
+        recall,
+        f1Score
+      };
+    } catch (error) {
+      console.error('Error testing accuracy:', error);
+      throw error;
+    }
+  }
+};

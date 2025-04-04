@@ -13,7 +13,6 @@
     "move-dist-windows": "if exist public rmdir /s /q public && mkdir public && xcopy /s /e /y client\\dist\\* public\\",
     "move-dist-unix": "rm -rf public && mkdir public && cp -r client/dist/* public/",
     "move-dist": "node -e \"if (process.platform === 'win32') { require('child_process').execSync('npm run move-dist-windows', {stdio: 'inherit'}) } else { require('child_process').execSync('npm run move-dist-unix', {stdio: 'inherit'}) }\""
-    
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

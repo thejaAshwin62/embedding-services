@@ -498,3 +498,37 @@ export const updateCaptureInterval = async (req, res) => {
     });
   }
 };
+
+let triggerEsp32Start = {
+  trigger: process.env.TRIGGER_ESP32_START || false,
+};
+
+export const getTriggerEsp32Start = async (req, res) => {
+  try {
+    res.json({
+      data: triggerEsp32Start
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch trigger ESP32 start",
+      error: error.message,
+    });
+  }
+};
+
+export const UpdatetriggerEsp32Start = async (req, res) => {
+  try {
+    const { trigger } = req.body;
+    triggerEsp32Start = {
+      trigger: trigger || triggerEsp32Start.trigger,
+    };
+    res.json({
+      data: triggerEsp32Start
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to trigger ESP32 start",
+      error: error.message,
+    });
+  }
+};
