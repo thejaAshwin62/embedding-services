@@ -11,6 +11,7 @@ import {
   getTriggerEsp32Start,
   UpdatetriggerEsp32Start,
 } from "../controllers/statsController.js";
+import { getWifiList } from "../controllers/wifiController.js";
 
 const router = express.Router();
 
@@ -24,5 +25,7 @@ router.get("/get-capture-interval", getCaptureInterval);
 router.post("/update-capture-interval", updateCaptureInterval);
 router.get("/get-trigger-esp", getTriggerEsp32Start);
 router.post("/update-trigger-esp", UpdatetriggerEsp32Start);
+
+router.get("/scan-wifi", getWifiList);
 
 export default router;

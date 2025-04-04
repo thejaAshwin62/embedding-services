@@ -28,6 +28,7 @@
     "mongoose": "^8.7.3",
     "multer": "^1.4.5-lts.1",
     "node-fetch": "^2.7.0",
+    "node-wifi": "^2.0.16",
     "together-ai": "^0.13.0",
     "winston": "^3.17.0"
   },
