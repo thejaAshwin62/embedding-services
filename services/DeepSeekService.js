@@ -26,12 +26,13 @@ Requirements:
       messages: [
         {
           role: "system",
-          content: "You are a concise observer. Provide short, clear feedback in a natural, observational style.",
+          content:
+            "You are a concise observer. Provide short, clear feedback in a natural, observational style.",
         },
         {
           role: "user",
           content: contextClearingPrompt,
-        }
+        },
       ],
       max_tokens: 150,
       temperature: 0.7,
@@ -48,7 +49,6 @@ Requirements:
     return response.choices[0].message.content;
   } catch (error) {
     console.error("Error generating fresh caption:", error);
-    // Return a default caption instead of throwing
     return "A scene captured in the image.";
   }
 }

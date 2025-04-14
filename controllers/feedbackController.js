@@ -14,7 +14,6 @@ const imageService = new ImageService(
 function generatePersonalizedPrompt(
   caption,
   nameDetails,
-  locationContext,
   objectsContext
 ) {
   if (!caption) {
@@ -28,10 +27,24 @@ function generatePersonalizedPrompt(
       ? nameDetails
       : nameDetails?.match || "unknown person";
 
+  // Extract sections from the combined analysis if present
+  let setting = "", mainFocus = "", peopleActions = "", details = "", mood = "";
+  
+  if (caption.includes("SETTING:")) {
+    const sections = caption.split(/\n(?=[A-Z]+:)/);
+    sections.forEach(section => {
+      if (section.includes("SETTING:")) setting = section.replace("SETTING:", "").trim();
+      if (section.includes("MAIN FOCUS:")) mainFocus = section.replace("MAIN FOCUS:", "").trim();
+      if (section.includes("PEOPLE & ACTIONS:")) peopleActions = section.replace("PEOPLE & ACTIONS:", "").trim();
+      if (section.includes("DETAILS:")) details = section.replace("DETAILS:", "").trim();
+      if (section.includes("MOOD:")) mood = section.replace("MOOD:", "").trim();
+    });
+  }
+
   // Start with a fresh context for each prompt
   const freshContext = `Starting a new scene description, disregarding any previous contexts or descriptions.
 
-Current scene details:`;
+Current scene analysis:`;
 
   if (name.toLowerCase() !== "unknown person") {
     const genericWords = [
@@ -46,36 +59,38 @@ Current scene details:`;
       personalizedCaption = personalizedCaption.replace(regex, name);
     });
 
-    personalizedCaption = `You recognize ${name} in the image. ${name} is depicted in the following scene: ${personalizedCaption}`;
+    peopleActions = peopleActions.replace(new RegExp(genericWords.join("|"), "gi"), name);
   }
 
-  return `${freshContext}
+  const structuredPrompt = `${freshContext}
 
-Forget any previous descriptions or scenarios. This is a completely new observation:
+Scene Setting: ${setting || "The scene takes place in the following context:"} ${name.toLowerCase() === "unknown person" ? "A person" : name} is present in this scene.
 
-You were standing near ${
-    name.toLowerCase() === "unknown person" ? "this person" : name
-  }, observing the scene firsthand. ${personalizedCaption}  
+Main Elements:
+${mainFocus ? `- Focus: ${mainFocus}` : `- Focus: ${personalizedCaption}`}
+${peopleActions ? `- Actions: ${peopleActions}` : ""}
+${details ? `- Key Details: ${details}` : ""}
+${mood ? `- Atmosphere: ${mood}` : ""}
 
-Objects in view:
-These are the objects detected from the image: ${objectsContext}.  
+Additional Context:
+- Objects Detected: ${objectsContext}
 
 Instructions:
-1. Focus only on the details provided above
-2. Disregard any previous descriptions or contexts
-3. Create a completely fresh scenario
-4. Convert this into a detailed AI-generated scenario where the user is being described the scene as if they were present
-5. Use "You were..." to make it immersive
-6. Ensure description is based solely on the current scene details
-7. Keep the response concise and focused (max 4-6 sentences)
-8. Make it natural and observational
+1. Focus on creating an immersive first-person perspective
+2. Incorporate all the analyzed elements naturally
+3. Make the scene feel present and immediate
+4. Keep the description vivid but concise (4-6 sentences)
+5. Emphasize the human element and emotional context
+6. Blend the technical details seamlessly into the narrative
 
 Return your response in this exact JSON format:
 {
   "feedback": "your detailed scenario here"
 }
 
-Remember: Generate a completely new description without referencing any previous contexts or descriptions.`;
+Remember: Create a fresh, engaging description that makes the reader feel present in the moment.`;
+
+  return structuredPrompt;
 }
 
 function ensureValidJson(aiResponse) {
@@ -170,17 +185,28 @@ export const createFeedback = async (req, res, next) => {
     }
 
     const now = new Date();
+
+    // Convert to Asia/Kolkata timezone (adjust this to your desired timezone)
+    const options = {
+      timeZone: 'Asia/Kolkata',
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    };
+
+    const dateOptions = {
+      timeZone: 'Asia/Kolkata',
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    };
+
     const feedback = new Feedback({
-      id_date: now.toLocaleDateString("en-GB"),
-      id_time: now.toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }),
+      id_date: now.toLocaleDateString("en-GB", dateOptions),
+      id_time: now.toLocaleTimeString("en-GB", options),
       feedback: jsonFeedback.feedback,
       embedded: false,
-     
       detectedObjects: detectedObjects || [],
       faceData: faceData.embedding || null,
       faceMatch: faceData.match || null,

@@ -4,10 +4,22 @@ import FormData from "form-data";
 import dotenv from "dotenv";
 import { generateCaptionFromText } from "./DeepSeekService.js";
 import { FACE_SERVICE } from "../utils/config.js";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 dotenv.config();
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Function to convert file to base64 for Gemini
+async function fileToGenerativePart(imagePath, mimeType) {
+  const imageData = await fs.promises.readFile(imagePath);
+  return {
+    inlineData: {
+      data: imageData.toString('base64'),
+      mimeType: mimeType || 'image/jpeg'
+    },
+  };
+}
 
 export class ImageService {
   constructor(apiUrl, apiToken) {
@@ -26,7 +38,51 @@ export class ImageService {
     // Ensure we're using the correct URL with /upload endpoint
     this.faceApiUrl = `${FACE_SERVICE}/upload`;
     
+    // Initialize Gemini
+    this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+    
     console.log("Face Service URL configured as:", this.faceApiUrl);
+  }
+
+  async analyzeWithGeminiVision(imagePath) {
+    try {
+      console.log('Processing with Gemini Vision...');
+      
+      const model = this.genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash",
+        generationConfig: {
+          temperature: 0.6,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 1536,
+        },
+      });
+      
+      const imagePart = await fileToGenerativePart(imagePath);
+
+      const prompt = `Analyze this image and provide a detailed but clear description in this format:
+
+SETTING: Describe when and where this takes place
+MAIN FOCUS: What's the key activity or event happening
+PEOPLE & ACTIONS: Who's involved and what they're doing
+DETAILS: List 2-3 specific, interesting details
+MOOD: Describe the overall feeling of the scene
+
+Make each section 1-2 sentences. Be specific but clear.`;
+
+      const result = await model.generateContent([{
+        text: prompt
+      }, imagePart]);
+
+      const response = await result.response;
+      let text = response.text();
+      text = text.replace(/(SETTING|MAIN FOCUS|PEOPLE & ACTIONS|DETAILS|MOOD):/g, '\n$1:');
+      
+      return text;
+    } catch (error) {
+      console.error("Error in Gemini Vision analysis:", error);
+      return "A scene captured in the image.";
+    }
   }
 
   async generateCaption(filename) {
@@ -37,7 +93,7 @@ export class ImageService {
 
       const data = fs.readFileSync(filename);
       
-      // Use retryFetch with increased timeout and retries
+      // Get caption from original API
       const response = await this.retryFetch(
         this.apiUrl,
         {
@@ -48,52 +104,55 @@ export class ImageService {
           method: "POST",
           body: data,
         },
-        3, // 3 retries
-        2000, // 2s initial delay
-        20000 // 20s timeout
+        3,
+        2000,
+        20000
       );
 
       if (!response.ok) {
         const errorText = await response.text();
         console.warn("Image caption API error:", errorText);
-        // Continue with a default caption
         return "A scene captured in the image.";
       }
 
       const result = await response.json();
       const imageDetails = result[0]?.generated_text;
 
-      console.log("Image details from salesforce api:", imageDetails);
-      if (!imageDetails) {
-        console.warn("No details generated from image");
-        return "A scene captured in the image.";
-      }
+      // Get Gemini Vision analysis
+      const geminiAnalysis = await this.analyzeWithGeminiVision(filename);
 
-      // Create a fresh prompt that emphasizes new generation
-      const freshPrompt = `Generate a completely new description for this image, focusing on key observations.
-Base your description ONLY on these current details: ${imageDetails}
+      // Combine both analyses
+      const combinedAnalysis = `
+Original Analysis: ${imageDetails || "No details available"}
+
+Gemini Vision Analysis: ${geminiAnalysis}`;
+
+      console.log("Combined image analysis:", combinedAnalysis);
+
+      // Create a fresh prompt combining both analyses
+      const freshPrompt = `Generate a comprehensive description based on these two analyses:
+
+${combinedAnalysis}
 
 Requirements:
-- Keep it short and sweet (max 4-6 sentences)
+- Combine insights from both analyses
+- Keep it concise but detailed (4-6 sentences)
 - Focus on key observations
-- Be direct and concise
-- Make it natural and observational
-- Do not reference any previous descriptions`;
+- Be direct and natural
+- Make it engaging and clear`;
 
       // Get fresh caption using DeepSeekService
-      const caption = await generateCaptionFromText(freshPrompt);
+      const finalCaption = await generateCaptionFromText(freshPrompt);
 
-      if (!caption) {
+      if (!finalCaption) {
         console.warn("No caption generated from DeepSeek");
         return "A scene captured in the image.";
       }
 
-      console.log("Generated fresh caption:", caption);
-
-      return caption;
+      console.log("Generated final caption:", finalCaption);
+      return finalCaption;
     } catch (error) {
       console.error("Error generating caption:", error);
-      // Return a default caption instead of throwing
       return "A scene captured in the image.";
     }
   }
