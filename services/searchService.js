@@ -73,7 +73,8 @@ function generateTimeRange(time24) {
 }
 
 function parseQuery(query) {
-  const today = new Date();
+  // Get current date in Asia/Kolkata timezone
+  const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
@@ -93,13 +94,15 @@ function parseQuery(query) {
   }
 
   if (query.toLowerCase().includes("today")) {
-    queryDate = today.toLocaleDateString("en-GB");
+    // Format date in DD/MM/YYYY format for Asia/Kolkata timezone
+    queryDate = today.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" });
+    
     // If it's midnight hour, we should look at yesterday's date
     if (isMidnightHour) {
-      queryDate = yesterday.toLocaleDateString("en-GB");
+      queryDate = yesterday.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" });
     }
   } else if (query.toLowerCase().includes("yesterday")) {
-    queryDate = yesterday.toLocaleDateString("en-GB");
+    queryDate = yesterday.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" });
   } else {
     const datePattern = /(\d{2}\/\d{2}\/\d{4})/;
     const dateMatch = query.match(datePattern);
