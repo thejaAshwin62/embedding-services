@@ -1,7 +1,7 @@
 import Together from "together-ai";
 
 const together = new Together({
-  apiKey: "979b843aaf6d7ffbd20372b34ea9b29c414becd66be461703992b4e58155a45c",
+  apiKey: "6779af5f7fbb0fc8669014230ea4a357f4359d648b1c261b52241693347394c9",
 });
 
 export async function generateCaptionFromText(text) {

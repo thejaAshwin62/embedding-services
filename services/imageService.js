@@ -28,14 +28,6 @@ export class ImageService {
     }
     this.apiUrl = apiUrl;
     this.apiToken = apiToken;
-    this.objectDetectionUrl =
-      "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-50";
-    // Add fallback object detection APIs
-    this.fallbackDetectionApis = [
-      "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-101",
-      "https://router.huggingface.co/hf-inference/models/microsoft/resnet-50",
-    ];
-    // Ensure we're using the correct URL with /upload endpoint
     this.faceApiUrl = `${FACE_SERVICE}/upload`;
     
     // Initialize Gemini
@@ -91,51 +83,15 @@ Make each section 1-2 sentences. Be specific but clear.`;
         throw new Error("File not found");
       }
 
-      const data = fs.readFileSync(filename);
-      
-      // Get caption from original API
-      const response = await this.retryFetch(
-        this.apiUrl,
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiToken}`,
-            "Content-Type": "application/octet-stream",
-          },
-          method: "POST",
-          body: data,
-        },
-        3,
-        2000,
-        20000
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.warn("Image caption API error:", errorText);
-        return "A scene captured in the image.";
-      }
-
-      const result = await response.json();
-      const imageDetails = result[0]?.generated_text;
-
       // Get Gemini Vision analysis
       const geminiAnalysis = await this.analyzeWithGeminiVision(filename);
 
-      // Combine both analyses
-      const combinedAnalysis = `
-Original Analysis: ${imageDetails || "No details available"}
+      // Create a fresh prompt for final caption
+      const freshPrompt = `Generate a comprehensive description based on this analysis:
 
-Gemini Vision Analysis: ${geminiAnalysis}`;
-
-      console.log("Combined image analysis:", combinedAnalysis);
-
-      // Create a fresh prompt combining both analyses
-      const freshPrompt = `Generate a comprehensive description based on these two analyses:
-
-${combinedAnalysis}
+${geminiAnalysis}
 
 Requirements:
-- Combine insights from both analyses
 - Keep it concise but detailed (4-6 sentences)
 - Focus on key observations
 - Be direct and natural
@@ -155,173 +111,6 @@ Requirements:
       console.error("Error generating caption:", error);
       return "A scene captured in the image.";
     }
-  }
-
-  async detectObjects(filename, currentApiIndex = 0) {
-    try {
-      if (!fs.existsSync(filename)) {
-        throw new Error("File not found");
-      }
-
-      // Determine which API to use
-      let currentApi = this.objectDetectionUrl;
-      if (currentApiIndex > 0) {
-        if (currentApiIndex - 1 < this.fallbackDetectionApis.length) {
-          currentApi = this.fallbackDetectionApis[currentApiIndex - 1];
-          console.log(
-            `Trying fallback object detection API #${currentApiIndex}: ${currentApi}`
-          );
-        } else {
-          throw new Error("All object detection APIs failed");
-        }
-      }
-
-      const imageData = fs.readFileSync(filename);
-
-      try {
-        console.log(`Starting object detection request to ${currentApi}`);
-        // Use the enhanced retryFetch method with more retries and longer timeouts
-        const response = await this.retryFetch(
-          currentApi,
-          {
-            headers: {
-              Authorization: `Bearer ${this.apiToken}`,
-              "Content-Type": "application/octet-stream",
-            },
-            method: "POST",
-            body: imageData,
-          },
-          4,
-          2000,
-          60000
-        ); // 4 retries, starting with 2s delay, 60s timeout
-
-        console.log("Parsing object detection response...");
-        const result = await response.json();
-        console.log(`Successfully detected ${result.length} objects`);
-        return result.map((item) => item.label);
-      } catch (error) {
-        console.warn(
-          `Object detection API failed (${currentApi}): ${error.message}`
-        );
-
-        // If this API failed, try the next one
-        if (currentApiIndex < this.fallbackDetectionApis.length + 1) {
-          console.log("Falling back to alternative object detection API...");
-          // Wait a bit before trying the next API to avoid overwhelming the system
-          await wait(3000);
-          return this.detectObjects(filename, currentApiIndex + 1);
-        }
-
-        // If all APIs failed, throw error
-        throw new Error(
-          `All object detection APIs failed. Last error: ${error.message}`
-        );
-      }
-    } catch (error) {
-      console.error("Error detecting objects:", error);
-      throw error;
-    }
-  }
-
-  async retryFetch(
-    url,
-    options,
-    retries = 5,
-    initialDelay = 1000,
-    timeout = 30000
-  ) {
-    let lastError;
-    for (let i = 0; i < retries; i++) {
-      try {
-        // Add timeout to fetch using AbortController
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-        const fetchOptions = {
-          ...options,
-          signal: controller.signal,
-        };
-
-        console.log(`Attempt ${i + 1}/${retries} for ${url}`);
-        const response = await fetch(url, fetchOptions);
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          console.log(`Successful response from ${url} on attempt ${i + 1}`);
-          return response;
-        }
-
-        // Handle non-ok responses
-        const errorText = await response.text();
-        lastError = new Error(
-          `Status ${response.status}: ${errorText.substring(0, 100)}...`
-        );
-
-        // Calculate exponential backoff with jitter
-        const delay = initialDelay * Math.pow(2, i) + Math.random() * 1000;
-        console.log(
-          `Attempt ${i + 1} failed with status ${
-            response.status
-          }, retrying in ${Math.round(delay)}ms...`
-        );
-        await wait(delay);
-      } catch (error) {
-        lastError = error;
-        if (error.name === "AbortError") {
-          console.warn(`Request to ${url} timed out after ${timeout}ms`);
-        } else {
-          console.warn(`Fetch error on attempt ${i + 1}: ${error.message}`);
-        }
-
-        if (i === retries - 1) throw error;
-
-        // Calculate exponential backoff with jitter for errors
-        const delay = initialDelay * Math.pow(2, i) + Math.random() * 1000;
-        console.log(`Will retry in ${Math.round(delay)}ms...`);
-        await wait(delay);
-      }
-    }
-    throw lastError || new Error(`Failed after ${retries} attempts`);
-  }
-
-  async retryFaceApiCall(url, options, maxRetries = 3) {
-    let attempt = 0;
-    let lastError;
-    
-    while (attempt < maxRetries) {
-      try {
-        console.log(`\nFace API call attempt ${attempt + 1}/${maxRetries} to ${url}`);
-        console.log("Request options:", {
-          method: options.method,
-          headers: options.headers,
-          bodySize: options.body ? (options.body instanceof FormData ? 'FormData' : JSON.stringify(options.body).length) : 0
-        });
-
-        const response = await fetch(url, options);
-        
-        if (response.ok) {
-          console.log(`✅ Successful face API response from ${url} on attempt ${attempt + 1}`);
-          return response;
-        }
-        
-        const errorText = await response.text();
-        lastError = new Error(`Status ${response.status}: ${errorText.substring(0, 100)}...`);
-        console.warn(`❌ Face API call failed with status ${response.status}:`, errorText);
-      } catch (error) {
-        lastError = error;
-        console.warn(`❌ Face API call error on attempt ${attempt + 1}:`, error.message);
-      }
-      
-      attempt++;
-      if (attempt < maxRetries) {
-        const delay = 15000; // 15 seconds
-        console.log(`⏳ Waiting ${delay/1000} seconds before retry ${attempt + 1}...`);
-        await wait(delay);
-      }
-    }
-    
-    throw lastError || new Error(`Face API call failed after ${maxRetries} attempts`);
   }
 
   async getFaceEmbedding(filename) {
@@ -416,6 +205,45 @@ Requirements:
         message: error.message
       };
     }
+  }
+
+  async retryFaceApiCall(url, options, maxRetries = 3) {
+    let attempt = 0;
+    let lastError;
+    
+    while (attempt < maxRetries) {
+      try {
+        console.log(`\nFace API call attempt ${attempt + 1}/${maxRetries} to ${url}`);
+        console.log("Request options:", {
+          method: options.method,
+          headers: options.headers,
+          bodySize: options.body ? (options.body instanceof FormData ? 'FormData' : JSON.stringify(options.body).length) : 0
+        });
+
+        const response = await fetch(url, options);
+        
+        if (response.ok) {
+          console.log(`✅ Successful face API response from ${url} on attempt ${attempt + 1}`);
+          return response;
+        }
+        
+        const errorText = await response.text();
+        lastError = new Error(`Status ${response.status}: ${errorText.substring(0, 100)}...`);
+        console.warn(`❌ Face API call failed with status ${response.status}:`, errorText);
+      } catch (error) {
+        lastError = error;
+        console.warn(`❌ Face API call error on attempt ${attempt + 1}:`, error.message);
+      }
+      
+      attempt++;
+      if (attempt < maxRetries) {
+        const delay = 15000; // 15 seconds
+        console.log(`⏳ Waiting ${delay/1000} seconds before retry ${attempt + 1}...`);
+        await wait(delay);
+      }
+    }
+    
+    throw lastError || new Error(`Face API call failed after ${maxRetries} attempts`);
   }
 
   async cleanup(filepath) {

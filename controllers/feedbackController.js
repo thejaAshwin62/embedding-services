@@ -11,11 +11,7 @@ const imageService = new ImageService(
   process.env.HF_ACCESS_TOKEN
 );
 
-function generatePersonalizedPrompt(
-  caption,
-  nameDetails,
-  objectsContext
-) {
+function generatePersonalizedPrompt(caption, nameDetails) {
   if (!caption) {
     throw new Error("Caption is missing");
   }
@@ -71,9 +67,6 @@ ${mainFocus ? `- Focus: ${mainFocus}` : `- Focus: ${personalizedCaption}`}
 ${peopleActions ? `- Actions: ${peopleActions}` : ""}
 ${details ? `- Key Details: ${details}` : ""}
 ${mood ? `- Atmosphere: ${mood}` : ""}
-
-Additional Context:
-- Objects Detected: ${objectsContext}
 
 Instructions:
 1. Focus on creating an immersive first-person perspective
@@ -144,9 +137,8 @@ export const createFeedback = async (req, res, next) => {
     }
 
     // Process image in parallel
-    const [caption, detectedObjects, faceData] = await Promise.all([
+    const [caption, faceData] = await Promise.all([
       imageService.generateCaption(imagePath),
-      imageService.detectObjects(imagePath),
       imageService.getFaceEmbedding(imagePath),
     ]);
 
@@ -157,17 +149,9 @@ export const createFeedback = async (req, res, next) => {
     console.log("Face Detection Result:", faceData);
     const nameDetails = faceData.match || "unknown person";
 
-    const objectsContext = detectedObjects?.length
-      ? `The image contains: ${detectedObjects.join(", ")}. `
-      : "";
-
-    const locationContext = `This image was captured at coordinates (${locationData.latitude}, ${locationData.longitude}). `;
-
     const feedbackPrompt = generatePersonalizedPrompt(
       caption,
-      nameDetails,
-      locationContext,
-      objectsContext
+      nameDetails
     );
 
     const aiResponse = await generateCaptionFromText(feedbackPrompt);
@@ -207,7 +191,6 @@ export const createFeedback = async (req, res, next) => {
       id_time: now.toLocaleTimeString("en-GB", options),
       feedback: jsonFeedback.feedback,
       embedded: false,
-      detectedObjects: detectedObjects || [],
       faceData: faceData.embedding || null,
       faceMatch: faceData.match || null,
       faceScore: faceData.score || null,
@@ -227,7 +210,6 @@ export const createFeedback = async (req, res, next) => {
         time: feedback.id_time,
         text: feedback.feedback,
         imageLocation: feedback.imageLocation,
-        detectedObjects: feedback.detectedObjects,
         faceData: {
           match: faceData.match,
           score: faceData.score,
