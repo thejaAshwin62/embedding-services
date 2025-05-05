@@ -136,17 +136,15 @@ export const createFeedback = async (req, res, next) => {
       };
     }
 
-    // Process image in parallel
-    const [caption, faceData] = await Promise.all([
-      imageService.generateCaption(imagePath),
-      imageService.getFaceEmbedding(imagePath),
-    ]);
+    // Process image
+    const captionResult = await imageService.generateCaption(imagePath);
+    const { caption, faceData } = captionResult;
 
     if (!caption) {
       throw new Error("Failed to generate caption");
     }
 
-    console.log("Face Detection Result:", faceData);
+    // console.log("Face Detection Result:", faceData);
     const nameDetails = faceData.match || "unknown person";
 
     const feedbackPrompt = generatePersonalizedPrompt(

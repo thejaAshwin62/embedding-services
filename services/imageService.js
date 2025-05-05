@@ -83,33 +83,60 @@ Make each section 1-2 sentences. Be specific but clear.`;
         throw new Error("File not found");
       }
 
+      // Get face recognition data first
+      console.log("\n=== Starting Face Recognition ===");
+      const faceData = await this.getFaceEmbedding(filename);
+      console.log("Face Recognition Result:", faceData);
+      console.log("=== End of Face Recognition ===\n");
+
       // Get Gemini Vision analysis
+      console.log("\n=== Starting Gemini Vision Analysis ===");
       const geminiAnalysis = await this.analyzeWithGeminiVision(filename);
+      console.log("Gemini Vision Analysis Output:");
+      console.log(geminiAnalysis);
+      console.log("=== End of Gemini Vision Analysis ===\n");
 
       // Create a fresh prompt for final caption
       const freshPrompt = `Generate a comprehensive description based on this analysis:
 
 ${geminiAnalysis}
 
+${faceData.match && faceData.match !== "unknown person" ? `Note: The person in this image is identified as ${faceData.match}.` : ""}
+
 Requirements:
 - Keep it concise but detailed (4-6 sentences)
 - Focus on key observations
 - Be direct and natural
-- Make it engaging and clear`;
+- Make it engaging and clear
+${faceData.match && faceData.match !== "unknown person" ? `- Use the person's name (${faceData.match}) in the description` : ""}`;
 
       // Get fresh caption using DeepSeekService
+      console.log("\n=== Starting DeepSeek Caption Generation ===");
+      console.log("Sending prompt to DeepSeek:");
+      console.log(freshPrompt);
       const finalCaption = await generateCaptionFromText(freshPrompt);
+      console.log("\nDeepSeek Generated Caption:");
+      console.log(finalCaption);
+      console.log("=== End of DeepSeek Caption Generation ===\n");
 
       if (!finalCaption) {
         console.warn("No caption generated from DeepSeek");
-        return "A scene captured in the image.";
+        return {
+          caption: "A scene captured in the image.",
+          faceData: { match: "unknown person" }
+        };
       }
 
-      console.log("Generated final caption:", finalCaption);
-      return finalCaption;
+      return {
+        caption: finalCaption,
+        faceData: faceData
+      };
     } catch (error) {
       console.error("Error generating caption:", error);
-      return "A scene captured in the image.";
+      return {
+        caption: "A scene captured in the image.",
+        faceData: { match: "unknown person" }
+      };
     }
   }
 
