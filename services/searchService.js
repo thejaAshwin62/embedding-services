@@ -77,9 +77,27 @@ function parseQuery(query) {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
+  // Check for time first to handle midnight hours correctly
+  const timePattern = /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i;
+  const timeMatch = query.match(timePattern);
+  
   let queryDate;
+  let isMidnightHour = false;
+
+  if (timeMatch) {
+    const hours = parseInt(timeMatch[1]);
+    const modifier = timeMatch[4]?.toLowerCase();
+    
+    // Check if it's midnight hour (12 AM to 4 AM)
+    isMidnightHour = (hours >= 0 && hours < 4) && (!modifier || modifier === 'am');
+  }
+
   if (query.toLowerCase().includes("today")) {
     queryDate = today.toLocaleDateString("en-GB");
+    // If it's midnight hour, we should look at yesterday's date
+    if (isMidnightHour) {
+      queryDate = yesterday.toLocaleDateString("en-GB");
+    }
   } else if (query.toLowerCase().includes("yesterday")) {
     queryDate = yesterday.toLocaleDateString("en-GB");
   } else {
@@ -116,9 +134,6 @@ function parseQuery(query) {
       period: timePeriod.name,
     };
   }
-
-  const timePattern = /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i;
-  const timeMatch = query.match(timePattern);
 
   if (!timeMatch) {
     return {
